@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CyliaTales Preview</title>
+  <link rel="stylesheet" href="/public/preview.css" />
+  <style>
+    /* Inline fallback if CSS file not loaded from GH raw */
+  </style>
+</head>
+<body>
+  <div id="bg-root"></div>
+  <header class="hero">
+    <div class="hero__content">
+      <h1 class="brand-h1">CyliaTales — Studio‑Grade Storytelling, Instantly</h1>
+      <p class="lead">Turn an idea into a cinematic, interactive story in minutes. 60 templates. 60 outfit packs. Enterprise privacy options.</p>
+      <div class="cta-row">
+        <button class="btn primary">Try a Template</button>
+        <button class="btn ghost">Request a Demo</button>
+      </div>
+    </div>
+
+    <div class="hero__preview" aria-hidden="false">
+      <div class="preview-window">
+        <canvas id="preview-canvas" width="640" height="360"></canvas>
+        <div class="preview-label">Live Template Preview — Bedtime Story</div>
+      </div>
+    </div>
+  </header>
+
+  <script>
+  // Minimal WebGL fullscreen shader demo (procedural nebula)
+  (function() {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'nebula-canvas';
+    canvas.style.position = 'fixed';
+    canvas.style.inset = '0';
+    canvas.style.zIndex = '-1';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    document.body.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl');
+    if (!gl) {
+      console.warn('WebGL not available — background fallback active.');
+      return;
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      gl.viewport(0,0,canvas.width,canvas.height);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const vsSource = `
+    attribute vec2 a_position;
+    varying vec2 vUv;
+    void main(){
+      vUv = a_position * 0.5 + 0.5;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+    `;
+
+    const fsSource = `
+    precision highp float;
+    varying vec2 vUv;
+    uniform float iTime;
+    uniform vec2 iResolution;
+    
+    float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7))) * 43758.5453123); }
+    float noise(vec2 p){
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      float a = hash(i);
+      float b = hash(i + vec2(1.0,0.0));
+      float c = hash(i + vec2(0.0,1.0));
+      float d = hash(i + vec2(1.0,1.0));
+      vec2 u = f*f*(3.0-2.0*f);
+      return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
+    }
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 6; i++) {
+        v += a * noise(p);
+        p *= 2.0;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    vec3 hsl2rgb(vec3 hsl){
+      float c = (1.0 - abs(2.0*hsl.z - 1.0)) * hsl.y;
+      float x = c * (1.0 - abs(mod(hsl.x*6.0, 2.0) - 1.0));
+      float m = hsl.z - c/2.0;
+      vec3 rgb;
+      if (hsl.x < 1.0/6.0) rgb = vec3(c, x, 0.0);
+      else if (hsl.x < 2.0/6.0) rgb = vec3(x, c, 0.0);
+      else if (hsl.x < 3.0/6.0) rgb = vec3(0.0, c, x);
+      else if (hsl.x < 4.0/6.0) rgb = vec3(0.0, x, c);
+      else if (hsl.x < 5.0/6.0) rgb = vec3(x, 0.0, c);
+      else rgb = vec3(c, 0.0, x);
+      return rgb + vec3(m);
+    }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 p = uv * vec2(1.7,1.0) - 0.5;
+      float t = iTime * 0.07;
+      float n = fbm(p * 3.0 + vec2(t, t*0.3));
+      float n2 = fbm(p * 6.0 - vec2(t*0.6, t*0.2));
+      float intensity = smoothstep(0.2, 0.8, n * 0.7 + n2 * 0.3);
+
+      vec3 c1 = hsl2rgb(vec3(0.62, 0.6, 0.45));
+      vec3 c2 = hsl2rgb(vec3(0.95, 0.75, 0.55));
+      vec3 color = mix(c1, c2, n2);
+
+      float stars = step(0.9985, fract(sin(dot(uv * 1234.0, vec2(12.9898,78.233))) * 43758.5453));
+      vec3 starColor = vec3(1.0, 0.95, 0.9) * stars;
+
+      vec3 final = color * intensity + starColor * 1.2;
+      float vignette = smoothstep(0.8, 0.3, length(uv - 0.5));
+      final *= mix(1.0, 0.6, vignette);
+
+      gl_FragColor = vec4(final, 1.0);
+    }
+    `;
+
+    function compileShader(type, source) {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, source);
+      gl.compileShader(sh);
+      if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)){
+        console.error(gl.getShaderInfoLog(sh));
+        gl.deleteShader(sh);
+        return null;
+      }
+      return sh;
+    }
+
+    const vs = compileShader(gl.VERTEX_SHADER, vsSource);
+    const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+      console.error(gl.getProgramInfoLog(prog));
+    }
+
+    const posLoc = gl.getAttribLocation(prog, 'a_position');
+    const timeLoc = gl.getUniformLocation(prog, 'iTime');
+    const resLoc = gl.getUniformLocation(prog, 'iResolution');
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    const verts = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+    function render(t){
+      gl.useProgram(prog);
+      gl.enableVertexAttribArray(posLoc);
+      gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(timeLoc, t * 0.001);
+      gl.uniform2f(resLoc, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    // small mock preview animation for the preview canvas
+    const pCanvas = document.getElementById('preview-canvas');
+    const pCtx = pCanvas.getContext('2d');
+    let a = 0;
+    function previewLoop(){
+      a += 0.02;
+      pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+      // background
+      const grd = pCtx.createLinearGradient(0,0,pCanvas.width,pCanvas.height);
+      grd.addColorStop(0, '#0f62fe');
+      grd.addColorStop(1, '#9b3cff');
+      pCtx.fillStyle = grd;
+      pCtx.fillRect(0,0,pCanvas.width,pCanvas.height);
+      // animated character placeholder (circle)
+      pCtx.fillStyle = 'rgba(255,255,255,0.9)';
+      const cx = pCanvas.width/2 + Math.sin(a)*20;
+      const cy = pCanvas.height/2 + Math.cos(a*0.7)*10;
+      pCtx.beginPath();
+      pCtx.arc(cx, cy, 48 + Math.sin(a*3)*6, 0, Math.PI*2);
+      pCtx.fill();
+      // label
+      pCtx.fillStyle = 'rgba(0,0,0,0.35)';
+      pCtx.fillRect(12, pCanvas.height - 44, 220, 30);
+      pCtx.fillStyle = '#fff';
+      pCtx.font = '16px Inter, Arial';
+      pCtx.fillText('Jamie the Fox — sleeping & sharing', 20, pCanvas.height - 22);
+      requestAnimationFrame(previewLoop);
+    }
+    previewLoop();
+  })();
+  </script>
+</body>
+</html>
