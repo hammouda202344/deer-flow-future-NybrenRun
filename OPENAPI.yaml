@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: CyliaTales API
+  version: "0.1.0"
+servers:
+  - url: https://api.cyliatales.example.com/v1
+paths:
+  /projects:
+    post:
+      summary: Create a new project
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreate"
+      responses:
+        "201":
+          description: Created
+  /generate/story:
+    post:
+      summary: Generate a story / beat-sheet from a brief
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryRequest"
+      responses:
+        "200":
+          description: Story generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryResponse"
+  /render/preview:
+    post:
+      summary: Request a low-res preview render (async)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenderRequest"
+      responses:
+        "202":
+          description: Accepted — job queued
+components:
+  schemas:
+    ProjectCreate:
+      type: object
+      properties:
+        name:
+          type: string
+    StoryRequest:
+      type: object
+      properties:
+        prompt:
+          type: string
+        tone:
+          type: string
+          enum: [whimsical, dramatic, educational]
+        targetAudience:
+          type: string
+    StoryResponse:
+      type: object
+      properties:
+        beats:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              description:
+                type: string
+    RenderRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+        quality:
+          type: string
+          enum: [preview, hq]
+        output:
+          type: string
+          enum: [mp4, webm, gif, html]

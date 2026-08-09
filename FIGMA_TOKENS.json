@@ -1,0 +1,31 @@
+{
+  "color": {
+    "brand.primary": "#0F62FE",
+    "brand.accent": "#9B3CFF",
+    "bg.surface": "#0B1020",
+    "fg.onSurface": "#F7FAFF",
+    "muted": "#9AA6C0",
+    "success": "#38D89B",
+    "danger": "#FF6B6B"
+  },
+  "typography": {
+    "heading.1": {"fontFamily":"Inter","fontSize":48,"lineHeight":56,"weight":700},
+    "heading.2": {"fontFamily":"Inter","fontSize":32,"lineHeight":40,"weight":600},
+    "body": {"fontFamily":"Inter","fontSize":16,"lineHeight":24,"weight":400}
+  },
+  "icon": {
+    "scale.16": 16,
+    "scale.24": 24,
+    "scale.32": 32,
+    "strokeWidth": 1.5
+  },
+  "shadow": {
+    "elevation.1": "0 6px 18px rgba(2,6,23,0.6)",
+    "elevation.2": "0 12px 36px rgba(2,6,23,0.7)"
+  },
+  "motion": {
+    "duration.fast": "130ms",
+    "duration.medium": "280ms",
+    "easing.standard": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+  }
+}
